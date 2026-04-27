@@ -1,0 +1,823 @@
+import { useState, useEffect, useCallback, useRef } from "react";
+
+const ADMIN_KEY = "coprede2026";
+
+const COURSES = [
+  {
+    id: "datacom-gpon",
+    title: "Módulo GPON/OLT — Completo",
+    provider: "Datacom EaD",
+    desc: "65 aulas (~13h) sobre redes GPON. Configuração e operação de OLTs e ONUs Datacom, provisionamento e troubleshooting.",
+    tags: ["gpon"],
+    duration: "~13h",
+    format: "EaD",
+    link: "https://ead.datacom.com.br",
+  },
+  {
+    id: "datacom-dmview",
+    title: "Configuração de OLT via DmView",
+    provider: "Datacom EaD",
+    desc: "21 aulas (~3h) com passo a passo de instalação e ativação de serviços GPON pela interface gráfica DmView.",
+    tags: ["gpon"],
+    duration: "~3h",
+    format: "EaD",
+    link: "https://ead.datacom.com.br",
+  },
+  {
+    id: "intelbras-fund",
+    title: "Fundamentos de Redes EPON e GPON",
+    provider: "Intelbras",
+    desc: "Conceitos de óptica, tipos de fibra, protocolos GPON/EPON, arquiteturas FTTx, splitters e cálculos de potência.",
+    tags: ["gpon", "fibra"],
+    duration: "~6h",
+    format: "EaD",
+    link: "https://cursos.intelbras.com.br",
+  },
+  {
+    id: "intelbras-g16",
+    title: "Técnico: Redes GPON — OLT G16",
+    provider: "Intelbras",
+    desc: "Ativação e configuração na OLT G16: VLANs, profiles DBA/LINE, firmware, backup e provisionamento automático de ONUs.",
+    tags: ["gpon"],
+    duration: "~4h",
+    format: "EaD",
+    link: "https://cursos.intelbras.com.br",
+  },
+  {
+    id: "elevify-gpon",
+    title: "Treinamento FTTH/GPON",
+    provider: "Elevify + Datacom",
+    desc: "Conceitos de OLT, ONU, splitters, PPPoE e operação de redes GPON. Nível introdutório com carga horária flexível.",
+    tags: ["gpon", "fibra"],
+    duration: "4–20h",
+    format: "EaD",
+    link: "https://elevify.com.br",
+  },
+  {
+    id: "padtec-yt",
+    title: "Padtec Classroom — Série DWDM",
+    provider: "Padtec",
+    desc: "Vídeos técnicos gratuitos: fundamentos DWDM, alternativas de baixo custo e arquiteturas flexíveis. Canal oficial YouTube.",
+    tags: ["dwdm"],
+    duration: "~1h cada",
+    format: "Vídeo",
+    link: "https://www.youtube.com/@PadtecOficial",
+  },
+  {
+    id: "nicbr-dwdm",
+    title: "Tutorial DWDM — Semana de Capacitação",
+    provider: "NIC.br / Ceptro.br",
+    desc: "Multiplexação por divisão de comprimento de onda, gestão espectral e componentes ópticos em redes de longa distância.",
+    tags: ["dwdm"],
+    duration: "~3h",
+    format: "Webinar",
+    link: "https://semanacap.bcp.nic.br/",
+  },
+  {
+    id: "intelbras-fibra",
+    title: "Trilha Fibra Óptica (5 cursos)",
+    provider: "Intelbras",
+    desc: "Conceitos e aplicações, Introdução Telecom, leitura de projetos, emendas ópticas e rede externa. Trilha completa de 5 cursos.",
+    tags: ["fibra"],
+    duration: "~35h",
+    format: "EaD",
+    link: "https://cursos.intelbras.com.br",
+  },
+  {
+    id: "nicbr-ipv6",
+    title: "IPv6 Básico — EaD",
+    provider: "NIC.br",
+    desc: "Autoaprendizado do protocolo IPv6 com videoaulas, laboratórios em VM e certificado. Já formou mais de 6.500 alunos.",
+    tags: ["ipv6"],
+    duration: "~25h",
+    format: "EaD",
+    link: "https://moodle.saladeaula.nic.br",
+  },
+  {
+    id: "nicbr-bcop",
+    title: "BCOP — Boas Práticas para Sistemas Autônomos",
+    provider: "NIC.br / Ceptro.br",
+    desc: "BGP, RPKI, IPv6, segurança, PTTs e +30 cenários de risco com soluções passo a passo para provedores de Internet.",
+    tags: ["ipv6", "redes"],
+    duration: "~16h",
+    format: "EaD + Presencial",
+    link: "https://ceptro.br/cursos-eventos/",
+  },
+  {
+    id: "nicbr-mpls",
+    title: "MPLS com Switches DmOS",
+    provider: "NIC.br + Datacom",
+    desc: "Configuração e operação de MPLS tradicional e por engenharia de tráfego em switches Datacom DmOS.",
+    tags: ["redes"],
+    duration: "~8h",
+    format: "EaD",
+    link: "https://moodle.saladeaula.nic.br",
+  },
+  {
+    id: "huawei-ict",
+    title: "Huawei ICT Academy — Cursos Gratuitos",
+    provider: "Huawei + IFs/MEC",
+    desc: "Cursos online gratuitos em parceria com Institutos Federais: Datacom, Cloud, IA, 5G. Certificação HCIA disponível.",
+    tags: ["redes"],
+    duration: "Variável",
+    format: "EaD",
+    link: "https://www.gov.br/mec/pt-br/mecplace/solucoes/parcerias/huawei/ict-academy",
+  },
+];
+
+const TAG_META = {
+  gpon: { label: "GPON/OLT", color: "#DA291C" },
+  dwdm: { label: "DWDM", color: "#7B2D8E" },
+  fibra: { label: "Fibra Óptica", color: "#00A651" },
+  ipv6: { label: "IPv6", color: "#F5A623" },
+  redes: { label: "Redes", color: "#0077C8" },
+};
+
+const FILTERS = [
+  { key: "all", label: "Todos" },
+  { key: "gpon", label: "GPON" },
+  { key: "dwdm", label: "DWDM" },
+  { key: "fibra", label: "Fibra" },
+  { key: "ipv6", label: "IPv6" },
+  { key: "redes", label: "Redes" },
+];
+
+// ─── ICONS ───
+const Icons = {
+  clock: (
+    <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+  ),
+  monitor: (
+    <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8m-4-4v4"/></svg>
+  ),
+  ext: (
+    <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+  ),
+  search: (
+    <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+  ),
+  sun: (
+    <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><path d="M12 1v2m0 18v2M4.22 4.22l1.42 1.42m12.72 12.72 1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+  ),
+  moon: (
+    <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+  ),
+  users: (
+    <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+  ),
+  chart: (
+    <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+  ),
+  logout: (
+    <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+  ),
+  shield: (
+    <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+  ),
+};
+
+// ─── STORAGE HELPERS ───
+async function loadData(key, fallback) {
+  try {
+    const r = await window.storage.get(key);
+    return r ? JSON.parse(r.value) : fallback;
+  } catch { return fallback; }
+}
+async function saveData(key, data) {
+  try { await window.storage.set(key, JSON.stringify(data)); } catch {}
+}
+
+// ─── MAIN APP ───
+export default function App() {
+  const [dark, setDark] = useState(false);
+  const [user, setUser] = useState(null);
+  const [view, setView] = useState("login");
+  const [users, setUsers] = useState({});
+  const [logs, setLogs] = useState([]);
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      const u = await loadData("hub:users", {});
+      const l = await loadData("hub:access-logs", []);
+      const session = await loadData("hub:session", null);
+      setUsers(u);
+      setLogs(l);
+      if (session && u[session]) {
+        setUser(u[session]);
+        setView("catalog");
+      }
+      setReady(true);
+    })();
+  }, []);
+
+  const register = useCallback(async (data) => {
+    const updated = { ...users, [data.email]: { ...data, registeredAt: new Date().toISOString() } };
+    setUsers(updated);
+    await saveData("hub:users", updated);
+    setUser(updated[data.email]);
+    await saveData("hub:session", data.email);
+    setView("catalog");
+  }, [users]);
+
+  const login = useCallback(async (email) => {
+    if (users[email]) {
+      setUser(users[email]);
+      await saveData("hub:session", email);
+      setView("catalog");
+      return true;
+    }
+    return false;
+  }, [users]);
+
+  const logout = useCallback(async () => {
+    setUser(null);
+    setView("login");
+    try { await window.storage.delete("hub:session"); } catch {}
+  }, []);
+
+  const trackAccess = useCallback(async (courseId) => {
+    if (!user) return;
+    const entry = { email: user.email, name: user.name, courseId, ts: new Date().toISOString() };
+    const updated = [...logs, entry];
+    setLogs(updated);
+    await saveData("hub:access-logs", updated);
+  }, [user, logs]);
+
+  const t = dark ? themes.dark : themes.light;
+
+  if (!ready) return (
+    <div style={{ ...t.bg, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div style={{ color: t.textMuted, fontFamily: FONT }}>Carregando...</div>
+    </div>
+  );
+
+  return (
+    <div style={{ ...t.bg, minHeight: "100vh", fontFamily: FONT, transition: "background 0.3s" }}>
+      {view === "login" && <LoginPage t={t} dark={dark} setDark={setDark} users={users} login={login} register={register} setView={setView} />}
+      {view === "catalog" && <CatalogPage t={t} dark={dark} setDark={setDark} user={user} logout={logout} trackAccess={trackAccess} setView={setView} />}
+      {view === "admin" && <AdminPage t={t} dark={dark} setDark={setDark} user={user} users={users} logs={logs} setLogs={setLogs} logout={logout} setView={setView} />}
+    </div>
+  );
+}
+
+// ─── LOGIN / REGISTER ───
+function LoginPage({ t, dark, setDark, users, login, register, setView }) {
+  const [mode, setMode] = useState("login");
+  const [form, setForm] = useState({ name: "", email: "", sector: "", role: "" });
+  const [error, setError] = useState("");
+
+  const handleLogin = async () => {
+    setError("");
+    if (!form.email.trim()) { setError("Informe seu e-mail"); return; }
+    const ok = await login(form.email.toLowerCase().trim());
+    if (!ok) setError("E-mail não cadastrado. Faça seu registro.");
+  };
+
+  const handleRegister = async () => {
+    setError("");
+    if (!form.name.trim() || !form.email.trim()) { setError("Nome e e-mail são obrigatórios"); return; }
+    if (users[form.email.toLowerCase().trim()]) { setError("E-mail já cadastrado. Faça login."); return; }
+    await register({ ...form, email: form.email.toLowerCase().trim() });
+  };
+
+  return (
+    <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
+      <div style={{ padding: "12px 16px", display: "flex", justifyContent: "flex-end" }}>
+        <ThemeToggle dark={dark} setDark={setDark} t={t} />
+      </div>
+      <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
+        <div style={{ width: "100%", maxWidth: 400 }}>
+          {/* Logo */}
+          <div style={{ textAlign: "center", marginBottom: 32 }}>
+            <div style={{
+              width: 56, height: 56, borderRadius: 14,
+              background: `linear-gradient(135deg, ${CLARO_RED}, #B71C1C)`,
+              display: "inline-flex", alignItems: "center", justifyContent: "center",
+              boxShadow: `0 8px 32px ${CLARO_RED}33`,
+              marginBottom: 12,
+            }}>
+              <span style={{ color: "#fff", fontSize: 24, fontWeight: 800, fontFamily: MONO }}>H</span>
+            </div>
+            <h1 style={{ ...t.text, fontSize: 22, fontWeight: 700, fontFamily: MONO, margin: 0 }}>
+              Hub de <span style={{ color: CLARO_RED }}>Conhecimento</span>
+            </h1>
+            <p style={{ color: t.textMuted, fontSize: 13, marginTop: 6 }}>Capacitação em Telecom & Redes Ópticas</p>
+          </div>
+
+          {/* Tabs */}
+          <div style={{ display: "flex", borderRadius: 10, overflow: "hidden", border: `1px solid ${t.border}`, marginBottom: 24 }}>
+            {["login", "register"].map(m => (
+              <button key={m} onClick={() => { setMode(m); setError(""); }} style={{
+                flex: 1, padding: "10px 0", border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600, fontFamily: FONT,
+                background: mode === m ? CLARO_RED : "transparent", color: mode === m ? "#fff" : t.textDim,
+                transition: "all 0.2s",
+              }}>
+                {m === "login" ? "Entrar" : "Cadastrar"}
+              </button>
+            ))}
+          </div>
+
+          {/* Form */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {mode === "register" && (
+              <Input t={t} placeholder="Nome completo" value={form.name} onChange={v => setForm(f => ({ ...f, name: v }))} />
+            )}
+            <Input t={t} placeholder="E-mail" type="email" value={form.email} onChange={v => setForm(f => ({ ...f, email: v }))} />
+            {mode === "register" && (
+              <>
+                <Input t={t} placeholder="Setor (ex: COP Rede, NOC...)" value={form.sector} onChange={v => setForm(f => ({ ...f, sector: v }))} />
+                <Input t={t} placeholder="Cargo / Função" value={form.role} onChange={v => setForm(f => ({ ...f, role: v }))} />
+              </>
+            )}
+            {error && <p style={{ color: CLARO_RED, fontSize: 12, margin: 0 }}>{error}</p>}
+            <button onClick={mode === "login" ? handleLogin : handleRegister} style={{
+              padding: "13px 0", borderRadius: 10, border: "none", cursor: "pointer",
+              background: CLARO_RED, color: "#fff", fontSize: 14, fontWeight: 700, fontFamily: FONT,
+              boxShadow: `0 4px 16px ${CLARO_RED}44`, transition: "transform 0.15s",
+            }}>
+              {mode === "login" ? "Acessar Hub" : "Criar minha conta"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Input({ t, placeholder, value, onChange, type = "text" }) {
+  return (
+    <input type={type} placeholder={placeholder} value={value}
+      onChange={e => onChange(e.target.value)}
+      style={{
+        width: "100%", padding: "12px 14px", borderRadius: 10, border: `1px solid ${t.border}`,
+        background: t.surface, color: t.textRaw, fontSize: 14, fontFamily: FONT, outline: "none",
+        boxSizing: "border-box", transition: "border-color 0.2s",
+      }}
+      onFocus={e => e.target.style.borderColor = CLARO_RED}
+      onBlur={e => e.target.style.borderColor = t.border}
+    />
+  );
+}
+
+// ─── CATALOG ───
+function CatalogPage({ t, dark, setDark, user, logout, trackAccess, setView }) {
+  const [filter, setFilter] = useState("all");
+  const [search, setSearch] = useState("");
+
+  let items = COURSES;
+  if (filter !== "all") items = items.filter(c => c.tags.includes(filter));
+  if (search) {
+    const q = search.toLowerCase();
+    items = items.filter(c => c.title.toLowerCase().includes(q) || c.provider.toLowerCase().includes(q) || c.desc.toLowerCase().includes(q) || c.tags.some(x => x.includes(q)));
+  }
+
+  return (
+    <div>
+      {/* Header */}
+      <header style={{
+        position: "sticky", top: 0, zIndex: 50,
+        background: dark ? "#0f1117ee" : "#ffffffee",
+        backdropFilter: "blur(16px)", borderBottom: `1px solid ${t.border}`,
+        padding: "10px 16px",
+      }}>
+        <div style={{ maxWidth: 960, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{
+              width: 30, height: 30, borderRadius: 8,
+              background: `linear-gradient(135deg, ${CLARO_RED}, #B71C1C)`,
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}>
+              <span style={{ color: "#fff", fontSize: 14, fontWeight: 800, fontFamily: MONO }}>H</span>
+            </div>
+            <span style={{ ...t.text, fontFamily: MONO, fontSize: 13, fontWeight: 700 }}>
+              Hub<span style={{ color: CLARO_RED }}> Telecom</span>
+            </span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            {user?.email === "nelson" || user?.name?.toLowerCase().includes("nelson") ? (
+              <IconBtn t={t} icon={Icons.shield} title="Admin" onClick={() => setView("admin")} />
+            ) : null}
+            <ThemeToggle dark={dark} setDark={setDark} t={t} />
+            <IconBtn t={t} icon={Icons.logout} title="Sair" onClick={logout} />
+          </div>
+        </div>
+      </header>
+
+      {/* Hero */}
+      <div style={{ maxWidth: 960, margin: "0 auto", padding: "28px 16px 16px" }}>
+        <p style={{ color: t.textMuted, fontSize: 12, fontFamily: MONO, margin: "0 0 4px", letterSpacing: 1 }}>
+          BEM-VINDO, {user?.name?.split(" ")[0]?.toUpperCase()}
+        </p>
+        <h1 style={{ ...t.text, fontSize: 24, fontWeight: 700, margin: "0 0 4px", lineHeight: 1.2 }}>
+          Capacitação em{" "}<span style={{ color: CLARO_RED }}>Telecom</span>
+        </h1>
+        <p style={{ color: t.textDim, fontSize: 14, margin: 0 }}>
+          {items.length} cursos gratuitos disponíveis
+        </p>
+      </div>
+
+      {/* Search */}
+      <div style={{ maxWidth: 960, margin: "0 auto", padding: "0 16px 12px" }}>
+        <div style={{ position: "relative" }}>
+          <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: t.textMuted }}>{Icons.search}</span>
+          <input placeholder="Buscar curso, tecnologia ou plataforma..." value={search}
+            onChange={e => setSearch(e.target.value)}
+            style={{
+              width: "100%", boxSizing: "border-box", padding: "11px 14px 11px 38px", borderRadius: 10,
+              border: `1px solid ${t.border}`, background: t.surface, color: t.textRaw,
+              fontSize: 14, fontFamily: FONT, outline: "none",
+            }}
+            onFocus={e => e.target.style.borderColor = CLARO_RED}
+            onBlur={e => e.target.style.borderColor = t.border}
+          />
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div style={{ maxWidth: 960, margin: "0 auto", padding: "0 16px 20px", display: "flex", gap: 6, overflowX: "auto" }}>
+        {FILTERS.map(f => (
+          <button key={f.key} onClick={() => setFilter(f.key)} style={{
+            padding: "7px 14px", borderRadius: 999, border: `1px solid ${filter === f.key ? CLARO_RED : t.border}`,
+            background: filter === f.key ? `${CLARO_RED}15` : "transparent",
+            color: filter === f.key ? CLARO_RED : t.textDim,
+            fontSize: 12, fontWeight: 600, fontFamily: FONT, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0,
+            transition: "all 0.2s",
+          }}>
+            {f.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Cards */}
+      <div style={{ maxWidth: 960, margin: "0 auto", padding: "0 16px 48px" }}>
+        {items.length === 0 ? (
+          <div style={{ textAlign: "center", padding: "48px 0", color: t.textMuted }}>
+            <div style={{ fontSize: 36, marginBottom: 8 }}>🔍</div>
+            <p>Nenhum curso encontrado</p>
+          </div>
+        ) : (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 340px), 1fr))", gap: 14 }}>
+            {items.map((c, i) => (
+              <CourseCard key={c.id} course={c} t={t} dark={dark} trackAccess={trackAccess}
+                style={{ animationDelay: `${i * 40}ms` }} />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Footer */}
+      <footer style={{ maxWidth: 960, margin: "0 auto", padding: "16px", borderTop: `1px solid ${t.border}`, textAlign: "center" }}>
+        <p style={{ color: t.textMuted, fontSize: 11, margin: 0, fontFamily: MONO }}>
+          Hub de Conhecimento · COP Rede · Claro Brasil · Abril 2026
+        </p>
+      </footer>
+    </div>
+  );
+}
+
+function CourseCard({ course, t, dark, trackAccess, style }) {
+  const accent = TAG_META[course.tags[0]]?.color || CLARO_RED;
+  const [hov, setHov] = useState(false);
+
+  const handleClick = () => {
+    trackAccess(course.id);
+    window.open(course.link, "_blank");
+  };
+
+  return (
+    <div
+      onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}
+      style={{
+        background: t.surface,
+        border: `1px solid ${hov ? accent + "55" : t.border}`,
+        borderRadius: 14, padding: 20, display: "flex", flexDirection: "column", gap: 10,
+        cursor: "pointer", transition: "all 0.2s",
+        transform: hov ? "translateY(-2px)" : "none",
+        boxShadow: hov ? `0 8px 24px ${dark ? "rgba(0,0,0,0.4)" : "rgba(0,0,0,0.08)"}` : "none",
+        animation: "fadeUp 0.35s ease both",
+        ...style,
+      }}
+      onClick={handleClick}
+    >
+      {/* Top accent line */}
+      <div style={{ width: 32, height: 3, borderRadius: 2, background: accent, marginBottom: 2 }} />
+
+      <h3 style={{ ...t.text, fontSize: 15, fontWeight: 700, margin: 0, lineHeight: 1.35 }}>{course.title}</h3>
+      <p style={{ color: t.textMuted, fontSize: 11, margin: 0, fontFamily: MONO, textTransform: "uppercase", letterSpacing: 0.5 }}>
+        {course.provider}
+      </p>
+      <p style={{ color: t.textDim, fontSize: 13, margin: 0, lineHeight: 1.5, flex: 1 }}>{course.desc}</p>
+
+      {/* Tags */}
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+        {course.tags.map(tag => {
+          const m = TAG_META[tag];
+          return (
+            <span key={tag} style={{
+              padding: "3px 9px", borderRadius: 6, fontSize: 10, fontWeight: 600, fontFamily: MONO,
+              background: m.color + "18", color: m.color, letterSpacing: 0.3,
+            }}>
+              {m.label}
+            </span>
+          );
+        })}
+      </div>
+
+      {/* Meta row */}
+      <div style={{
+        display: "flex", alignItems: "center", gap: 14, paddingTop: 10,
+        borderTop: `1px solid ${t.border}`, fontSize: 12, color: t.textMuted,
+      }}>
+        <span style={{ display: "flex", alignItems: "center", gap: 4 }}>{Icons.clock} {course.duration}</span>
+        <span style={{ display: "flex", alignItems: "center", gap: 4 }}>{Icons.monitor} {course.format}</span>
+        <span style={{
+          marginLeft: "auto", padding: "3px 8px", borderRadius: 5, fontSize: 10,
+          fontWeight: 700, fontFamily: MONO, background: "#00A65118", color: "#00A651",
+        }}>
+          GRATUITO
+        </span>
+      </div>
+
+      {/* Link */}
+      <div style={{ display: "flex", alignItems: "center", gap: 5, color: CLARO_RED, fontSize: 13, fontWeight: 600 }}>
+        Acessar curso {Icons.ext}
+      </div>
+    </div>
+  );
+}
+
+// ─── ADMIN PAGE ───
+function AdminPage({ t, dark, setDark, user, users, logs, setLogs, logout, setView }) {
+  const [adminAuth, setAdminAuth] = useState(false);
+  const [key, setKey] = useState("");
+  const [tab, setTab] = useState("overview");
+
+  const userList = Object.values(users);
+  const courseAccess = {};
+  logs.forEach(l => { courseAccess[l.courseId] = (courseAccess[l.courseId] || 0) + 1; });
+  const ranked = Object.entries(courseAccess).sort((a, b) => b[1] - a[1]);
+  const userAccess = {};
+  logs.forEach(l => {
+    if (!userAccess[l.email]) userAccess[l.email] = { name: l.name || l.email, count: 0, last: l.ts };
+    userAccess[l.email].count++;
+    if (l.ts > userAccess[l.email].last) userAccess[l.email].last = l.ts;
+  });
+  const userRanked = Object.entries(userAccess).sort((a, b) => b[1].count - a[1].count);
+
+  const clearLogs = async () => {
+    if (confirm("Limpar todos os logs de acesso?")) {
+      setLogs([]);
+      await saveData("hub:access-logs", []);
+    }
+  };
+
+  if (!adminAuth) {
+    return (
+      <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
+        <div style={{ padding: "12px 16px", display: "flex", justifyContent: "space-between" }}>
+          <button onClick={() => setView("catalog")} style={{ ...linkBtnStyle, color: t.textDim }}>← Voltar</button>
+          <ThemeToggle dark={dark} setDark={setDark} t={t} />
+        </div>
+        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+          <div style={{ width: "100%", maxWidth: 360, textAlign: "center" }}>
+            <div style={{ marginBottom: 20, color: CLARO_RED }}>{Icons.shield}</div>
+            <h2 style={{ ...t.text, fontSize: 20, fontWeight: 700, margin: "0 0 8px" }}>Painel Admin</h2>
+            <p style={{ color: t.textDim, fontSize: 13, marginBottom: 24 }}>Insira a chave de acesso para continuar</p>
+            <input type="password" placeholder="Chave de acesso" value={key}
+              onChange={e => setKey(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && key === ADMIN_KEY && setAdminAuth(true)}
+              style={{
+                width: "100%", boxSizing: "border-box", padding: "12px 14px", borderRadius: 10,
+                border: `1px solid ${t.border}`, background: t.surface, color: t.textRaw,
+                fontSize: 14, fontFamily: FONT, outline: "none", textAlign: "center", marginBottom: 12,
+              }}
+            />
+            <button onClick={() => key === ADMIN_KEY ? setAdminAuth(true) : alert("Chave incorreta")} style={{
+              width: "100%", padding: "12px 0", borderRadius: 10, border: "none", cursor: "pointer",
+              background: CLARO_RED, color: "#fff", fontSize: 14, fontWeight: 700, fontFamily: FONT,
+            }}>
+              Autenticar
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      {/* Header */}
+      <header style={{
+        position: "sticky", top: 0, zIndex: 50,
+        background: dark ? "#0f1117ee" : "#ffffffee",
+        backdropFilter: "blur(16px)", borderBottom: `1px solid ${t.border}`,
+        padding: "10px 16px",
+      }}>
+        <div style={{ maxWidth: 960, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <button onClick={() => setView("catalog")} style={{ ...linkBtnStyle, color: t.textDim, fontSize: 13 }}>← Hub</button>
+            <span style={{ ...t.text, fontFamily: MONO, fontSize: 13, fontWeight: 700, color: CLARO_RED }}>Admin</span>
+          </div>
+          <div style={{ display: "flex", gap: 6 }}>
+            <ThemeToggle dark={dark} setDark={setDark} t={t} />
+            <IconBtn t={t} icon={Icons.logout} onClick={logout} />
+          </div>
+        </div>
+      </header>
+
+      <div style={{ maxWidth: 960, margin: "0 auto", padding: "20px 16px 48px" }}>
+        {/* Stats Cards */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: 10, marginBottom: 24 }}>
+          {[
+            { label: "Cadastros", value: userList.length, color: CLARO_RED },
+            { label: "Acessos", value: logs.length, color: "#0077C8" },
+            { label: "Cursos", value: COURSES.length, color: "#00A651" },
+            { label: "Hoje", value: logs.filter(l => l.ts?.startsWith(new Date().toISOString().slice(0, 10))).length, color: "#F5A623" },
+          ].map(s => (
+            <div key={s.label} style={{
+              background: t.surface, border: `1px solid ${t.border}`, borderRadius: 12, padding: 16,
+            }}>
+              <p style={{ color: t.textMuted, fontSize: 11, fontFamily: MONO, margin: "0 0 4px", textTransform: "uppercase" }}>{s.label}</p>
+              <p style={{ color: s.color, fontSize: 28, fontWeight: 700, margin: 0, fontFamily: MONO }}>{s.value}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Tabs */}
+        <div style={{ display: "flex", gap: 4, marginBottom: 20, borderBottom: `1px solid ${t.border}`, paddingBottom: 1 }}>
+          {[
+            { key: "overview", label: "Cursos mais acessados", icon: Icons.chart },
+            { key: "users", label: "Usuários", icon: Icons.users },
+            { key: "logs", label: "Log de acessos", icon: Icons.monitor },
+          ].map(tb => (
+            <button key={tb.key} onClick={() => setTab(tb.key)} style={{
+              display: "flex", alignItems: "center", gap: 5, padding: "8px 14px",
+              border: "none", cursor: "pointer", fontSize: 12, fontWeight: 600, fontFamily: FONT,
+              background: "transparent", borderBottom: `2px solid ${tab === tb.key ? CLARO_RED : "transparent"}`,
+              color: tab === tb.key ? CLARO_RED : t.textDim, transition: "all 0.2s",
+            }}>
+              {tb.icon} {tb.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Tab Content */}
+        {tab === "overview" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {ranked.length === 0 ? (
+              <p style={{ color: t.textMuted, fontSize: 13, textAlign: "center", padding: 32 }}>Nenhum acesso registrado ainda</p>
+            ) : ranked.map(([id, count], i) => {
+              const c = COURSES.find(x => x.id === id);
+              const max = ranked[0][1];
+              return (
+                <div key={id} style={{
+                  background: t.surface, border: `1px solid ${t.border}`, borderRadius: 10,
+                  padding: "12px 14px", display: "flex", alignItems: "center", gap: 12, position: "relative", overflow: "hidden",
+                }}>
+                  <div style={{
+                    position: "absolute", left: 0, top: 0, bottom: 0,
+                    width: `${(count / max) * 100}%`, background: CLARO_RED + "08",
+                  }} />
+                  <span style={{ ...t.text, fontFamily: MONO, fontSize: 18, fontWeight: 700, color: CLARO_RED, minWidth: 28, textAlign: "right", position: "relative" }}>
+                    {i + 1}
+                  </span>
+                  <div style={{ flex: 1, position: "relative" }}>
+                    <p style={{ ...t.text, fontSize: 13, fontWeight: 600, margin: 0 }}>{c?.title || id}</p>
+                    <p style={{ color: t.textMuted, fontSize: 11, margin: 0 }}>{c?.provider}</p>
+                  </div>
+                  <span style={{ fontFamily: MONO, fontSize: 14, fontWeight: 700, color: CLARO_RED, position: "relative" }}>
+                    {count}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {tab === "users" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {userList.length === 0 ? (
+              <p style={{ color: t.textMuted, fontSize: 13, textAlign: "center", padding: 32 }}>Nenhum usuário cadastrado</p>
+            ) : userList.map((u, i) => (
+              <div key={i} style={{
+                background: t.surface, border: `1px solid ${t.border}`, borderRadius: 10, padding: "12px 14px",
+              }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+                  <div>
+                    <p style={{ ...t.text, fontSize: 14, fontWeight: 600, margin: 0 }}>{u.name}</p>
+                    <p style={{ color: t.textMuted, fontSize: 12, margin: "2px 0 0" }}>{u.email}</p>
+                  </div>
+                  <span style={{
+                    padding: "2px 8px", borderRadius: 5, fontSize: 10, fontFamily: MONO, fontWeight: 600,
+                    background: "#0077C818", color: "#0077C8",
+                  }}>
+                    {userAccess[u.email]?.count || 0} acessos
+                  </span>
+                </div>
+                {(u.sector || u.role) && (
+                  <p style={{ color: t.textDim, fontSize: 11, margin: "6px 0 0" }}>
+                    {[u.sector, u.role].filter(Boolean).join(" · ")}
+                  </p>
+                )}
+                <p style={{ color: t.textMuted, fontSize: 10, margin: "4px 0 0", fontFamily: MONO }}>
+                  Cadastro: {u.registeredAt ? new Date(u.registeredAt).toLocaleDateString("pt-BR") : "—"}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {tab === "logs" && (
+          <div>
+            {logs.length > 0 && (
+              <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
+                <button onClick={clearLogs} style={{
+                  padding: "6px 14px", borderRadius: 8, border: `1px solid ${CLARO_RED}44`,
+                  background: "transparent", color: CLARO_RED, fontSize: 12, fontWeight: 600,
+                  fontFamily: FONT, cursor: "pointer",
+                }}>
+                  Limpar logs
+                </button>
+              </div>
+            )}
+            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              {logs.length === 0 ? (
+                <p style={{ color: t.textMuted, fontSize: 13, textAlign: "center", padding: 32 }}>Nenhum log registrado</p>
+              ) : [...logs].reverse().slice(0, 100).map((l, i) => {
+                const c = COURSES.find(x => x.id === l.courseId);
+                return (
+                  <div key={i} style={{
+                    background: t.surface, border: `1px solid ${t.border}`, borderRadius: 8,
+                    padding: "10px 12px", display: "flex", alignItems: "center", gap: 10, fontSize: 12,
+                  }}>
+                    <span style={{ color: t.textMuted, fontFamily: MONO, fontSize: 10, minWidth: 62 }}>
+                      {l.ts ? new Date(l.ts).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "—"}
+                    </span>
+                    <span style={{ ...t.text, fontWeight: 600, fontSize: 12 }}>{l.name || l.email}</span>
+                    <span style={{ color: t.textMuted }}>→</span>
+                    <span style={{ color: t.textDim, fontSize: 12, flex: 1 }}>{c?.title || l.courseId}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── SHARED COMPONENTS ───
+function ThemeToggle({ dark, setDark, t }) {
+  return (
+    <button onClick={() => setDark(!dark)} style={{
+      width: 34, height: 34, borderRadius: 8, border: `1px solid ${t.border}`,
+      background: "transparent", color: t.textDim, cursor: "pointer",
+      display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s",
+    }}>
+      {dark ? Icons.sun : Icons.moon}
+    </button>
+  );
+}
+
+function IconBtn({ t, icon, onClick, title }) {
+  return (
+    <button onClick={onClick} title={title} style={{
+      width: 34, height: 34, borderRadius: 8, border: `1px solid ${t.border}`,
+      background: "transparent", color: t.textDim, cursor: "pointer",
+      display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s",
+    }}>
+      {icon}
+    </button>
+  );
+}
+
+// ─── CONSTANTS & THEMES ───
+const CLARO_RED = "#DA291C";
+const FONT = "'Outfit', 'DM Sans', system-ui, sans-serif";
+const MONO = "'JetBrains Mono', 'SF Mono', monospace";
+
+const linkBtnStyle = { background: "none", border: "none", cursor: "pointer", fontFamily: FONT, fontSize: 13, padding: 0 };
+
+const themes = {
+  light: {
+    bg: { background: "#FAFAFA" },
+    surface: "#FFFFFF",
+    border: "#E8E8EC",
+    text: { color: "#1A1A2E" },
+    textRaw: "#1A1A2E",
+    textDim: "#555568",
+    textMuted: "#8E8EA0",
+  },
+  dark: {
+    bg: { background: "#0C0C14" },
+    surface: "#16161F",
+    border: "#252530",
+    text: { color: "#E8E8EC" },
+    textRaw: "#E8E8EC",
+    textDim: "#A0A0B0",
+    textMuted: "#606070",
+  },
+};
+
