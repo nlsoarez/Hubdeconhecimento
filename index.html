@@ -175,12 +175,21 @@ input{font-family:var(--font)}
 .search-input:focus{border-color:var(--red);box-shadow:0 0 0 3px var(--red-dim)}
 .search-input::placeholder{color:var(--text-muted)}
 
+/* ── FILTERS ── */
 .filters{
   padding:0 20px 14px;
+  display:flex;flex-direction:column;gap:8px;
+}
+.filter-group-label{
+  display:none;
+  font-size:10px;font-family:var(--mono);color:var(--text-muted);
+  text-transform:uppercase;letter-spacing:1.2px;margin-bottom:4px;
+}
+.filter-group-btns{
   display:flex;gap:5px;overflow-x:auto;
   -webkit-overflow-scrolling:touch;scrollbar-width:none;
 }
-.filters::-webkit-scrollbar{display:none}
+.filter-group-btns::-webkit-scrollbar{display:none}
 .filter-btn{
   padding:5px 12px;border-radius:6px;
   border:1px solid transparent;background:transparent;
@@ -196,7 +205,41 @@ input{font-family:var(--font)}
   display:grid;grid-template-columns:1fr;gap:12px;
 }
 @media(min-width:640px){.grid{grid-template-columns:repeat(2,1fr)}}
-@media(min-width:960px){.grid{grid-template-columns:repeat(3,1fr)}}
+
+/* ── DESKTOP LAYOUT ── */
+.catalog-layout{display:flex;flex-direction:column}
+.catalog-main{flex:1;min-width:0}
+
+@media(min-width:960px){
+  .page-wrap{max-width:1300px}
+  .hero{padding:48px 28px 20px}
+  .hero-title{font-size:34px}
+  .tracks-section{padding:4px 28px 20px}
+  .catalog-layout{
+    flex-direction:row;align-items:flex-start;
+    padding:0 28px 56px;
+  }
+  .catalog-sidebar{
+    width:220px;flex-shrink:0;
+    position:sticky;top:64px;
+    max-height:calc(100vh - 64px);
+    overflow-y:auto;scrollbar-width:none;
+    padding-right:20px;
+    border-right:1px solid var(--border);
+    margin-right:24px;
+  }
+  .catalog-sidebar::-webkit-scrollbar{display:none}
+  .catalog-sidebar .search-wrap{padding:0 0 16px;position:relative}
+  .catalog-sidebar .search-icon{left:12px}
+  .filters{padding:0;gap:16px}
+  .filter-group-label{display:block}
+  .filter-group-btns{flex-direction:column;overflow-x:visible;gap:2px}
+  .filter-btn{white-space:normal;flex-shrink:unset;text-align:left;width:100%}
+  .catalog-main .grid{padding:0 0 56px;grid-template-columns:repeat(2,1fr)}
+}
+@media(min-width:1200px){
+  .catalog-main .grid{grid-template-columns:repeat(3,1fr)}
+}
 
 .card{
   background:var(--surface);
@@ -446,15 +489,20 @@ input{font-family:var(--font)}
 
     <div id="tracksSection" class="tracks-section"></div>
 
-    <div class="search-wrap">
-      <span class="search-icon">
-        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-      </span>
-      <input class="search-input" id="searchInput" placeholder="Buscar curso, tecnologia ou plataforma..." oninput="renderCatalog()">
+    <div class="catalog-layout">
+      <aside class="catalog-sidebar">
+        <div class="search-wrap">
+          <span class="search-icon">
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          </span>
+          <input class="search-input" id="searchInput" placeholder="Buscar curso, tecnologia ou plataforma..." oninput="renderCatalog()">
+        </div>
+        <div class="filters" id="filtersBar"></div>
+      </aside>
+      <div class="catalog-main">
+        <div class="grid" id="catalogGrid"></div>
+      </div>
     </div>
-
-    <div class="filters" id="filtersBar"></div>
-    <div class="grid" id="catalogGrid"></div>
   </div>
 
   <footer class="footer">
@@ -846,22 +894,29 @@ function renderCatalog() {
   // Tracks
   renderTracks();
 
-  // Filters — 3 rows: tag | nível | fabricante
+  // Filters — grupos adaptados para mobile (scroll horizontal) e desktop (sidebar vertical)
   const vendors = [...new Set(COURSES.map(c => c.vendor).filter(Boolean))].sort();
   const filtersBar = document.getElementById("filtersBar");
-  filtersBar.style.flexDirection = "column";
-  filtersBar.style.alignItems = "flex-start";
-  filtersBar.style.gap = "8px";
   filtersBar.innerHTML = `
-    <div style="display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;width:100%">
-      ${FILTERS.map(f => `<button class="filter-btn ${currentFilter===f.key?'active':''}" style="flex-shrink:0" onclick="setFilter('${f.key}')">${f.label}</button>`).join("")}
+    <div class="filter-group">
+      <div class="filter-group-label">Tópicos</div>
+      <div class="filter-group-btns">
+        ${FILTERS.map(f => `<button class="filter-btn ${currentFilter===f.key?'active':''}" onclick="setFilter('${f.key}')">${f.label}</button>`).join("")}
+      </div>
     </div>
-    <div style="display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;width:100%">
-      ${[{k:"all",l:"Todos os níveis"},{k:"iniciante",l:"Iniciante"},{k:"intermediario",l:"Intermediário"},{k:"avancado",l:"Avançado"}].map(f =>
-        `<button class="filter-btn ${currentLevelFilter===f.k?'active':''}" style="flex-shrink:0" onclick="setLevelFilter('${f.k}')">${f.l}</button>`).join("")}
-      <span style="width:1px;height:20px;background:var(--border);flex-shrink:0;margin:auto 2px"></span>
-      <button class="filter-btn ${currentVendorFilter==='all'?'active':''}" style="flex-shrink:0" onclick="setVendorFilter('all')">Todos</button>
-      ${vendors.map(v => `<button class="filter-btn ${currentVendorFilter===v?'active':''}" style="flex-shrink:0" onclick="setVendorFilter('${v}')">${v}</button>`).join("")}
+    <div class="filter-group">
+      <div class="filter-group-label">Nível</div>
+      <div class="filter-group-btns">
+        ${[{k:"all",l:"Todos"},{k:"iniciante",l:"Iniciante"},{k:"intermediario",l:"Intermediário"},{k:"avancado",l:"Avançado"}].map(f =>
+          `<button class="filter-btn ${currentLevelFilter===f.k?'active':''}" onclick="setLevelFilter('${f.k}')">${f.l}</button>`).join("")}
+      </div>
+    </div>
+    <div class="filter-group">
+      <div class="filter-group-label">Fabricante</div>
+      <div class="filter-group-btns">
+        <button class="filter-btn ${currentVendorFilter==='all'?'active':''}" onclick="setVendorFilter('all')">Todos</button>
+        ${vendors.map(v => `<button class="filter-btn ${currentVendorFilter===v?'active':''}" onclick="setVendorFilter('${v}')">${v}</button>`).join("")}
+      </div>
     </div>`;
 
   // Filter + search
