@@ -708,61 +708,71 @@ function renderTracks() {
 }
 
 function initStorage(callback) {
-  if (!FIREBASE_CONFIG) {
-    _users = JSON.parse(localStorage.getItem("hub:users") || "{}");
-    _logs = JSON.parse(localStorage.getItem("hub:logs") || "[]");
+  let called = false;
+  function done() {
+    if (called) return;
+    called = true;
     callback();
-    return;
   }
+
+  function fallback(reason) {
+    console.warn("Firebase fallback:", reason);
+    _db = null;
+    _users = JSON.parse(localStorage.getItem("hub:users") || "{}");
+    _logs  = JSON.parse(localStorage.getItem("hub:logs")  || "[]");
+    done();
+  }
+
+  if (!FIREBASE_CONFIG) { fallback("sem configuração"); return; }
+
+  // Timeout de segurança: se Firebase não responder em 6s, usa localStorage
+  const timeout = setTimeout(() => fallback("timeout"), 6000);
 
   try {
     firebase.initializeApp(FIREBASE_CONFIG);
     _db = firebase.database();
 
     let usersReady = false, logsReady = false;
-    const check = () => { if (usersReady && logsReady) callback(); };
+    function check() {
+      if (!usersReady || !logsReady) return;
+      clearTimeout(timeout);
+      done();
+    }
 
-    _db.ref("hub/users").on("value", snap => {
-      const remote = snap.val() || {};
-      // Migra dados locais para o Firebase na primeira sincronização (se Firebase vazio)
-      if (Object.keys(remote).length === 0) {
-        const local = JSON.parse(localStorage.getItem("hub:users") || "{}");
-        if (Object.keys(local).length > 0) {
-          _users = local;
-          _db.ref("hub/users").set(local).catch(console.error);
-        } else {
-          _users = {};
-        }
-      } else {
-        _users = remote;
-      }
-      if (!usersReady) { usersReady = true; check(); }
-    });
+    _db.ref("hub/users").on("value",
+      snap => {
+        const remote = snap.val() || {};
+        if (Object.keys(remote).length === 0) {
+          const local = JSON.parse(localStorage.getItem("hub:users") || "{}");
+          if (Object.keys(local).length > 0) {
+            _users = local;
+            _db.ref("hub/users").set(local).catch(console.error);
+          } else { _users = {}; }
+        } else { _users = remote; }
+        if (!usersReady) { usersReady = true; check(); }
+      },
+      err => { console.error("Firebase users:", err); fallback(err.message); }
+    );
 
-    _db.ref("hub/logs").on("value", snap => {
-      const data = snap.val() || {};
-      const remote = Array.isArray(data) ? data : Object.values(data);
-      // Migra logs locais na primeira sincronização (se Firebase vazio)
-      if (remote.length === 0) {
-        const local = JSON.parse(localStorage.getItem("hub:logs") || "[]");
-        if (local.length > 0) {
-          _logs = local;
-          const obj = {};
-          local.forEach((log, i) => { obj[i] = log; });
-          _db.ref("hub/logs").set(obj).catch(console.error);
-        } else {
-          _logs = [];
-        }
-      } else {
-        _logs = remote;
-      }
-      if (!logsReady) { logsReady = true; check(); }
-    });
+    _db.ref("hub/logs").on("value",
+      snap => {
+        const data = snap.val() || {};
+        const remote = Array.isArray(data) ? data : Object.values(data);
+        if (remote.length === 0) {
+          const local = JSON.parse(localStorage.getItem("hub:logs") || "[]");
+          if (local.length > 0) {
+            _logs = local;
+            const obj = {};
+            local.forEach((log, i) => { obj[i] = log; });
+            _db.ref("hub/logs").set(obj).catch(console.error);
+          } else { _logs = []; }
+        } else { _logs = remote; }
+        if (!logsReady) { logsReady = true; check(); }
+      },
+      err => { console.error("Firebase logs:", err); fallback(err.message); }
+    );
   } catch (e) {
-    console.error("Firebase erro:", e);
-    _users = JSON.parse(localStorage.getItem("hub:users") || "{}");
-    _logs = JSON.parse(localStorage.getItem("hub:logs") || "[]");
-    callback();
+    fallback(e.message);
   }
 }
 
