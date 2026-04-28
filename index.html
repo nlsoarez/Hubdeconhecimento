@@ -389,6 +389,42 @@ input { font-family: var(--font); }
   animation: spin 0.8s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── TRACKS ── */
+.tracks-section { padding: 0 16px 20px; }
+.tracks-label {
+  color: var(--text-muted); font-size: 11px; font-family: var(--mono);
+  text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px;
+}
+.tracks-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
+@media (min-width: 640px) { .tracks-grid { grid-template-columns: repeat(3, 1fr); } }
+.track-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px; padding: 14px; transition: border-color 0.2s;
+}
+.track-card:hover { border-color: rgba(218,41,28,0.3); }
+.track-name { font-size: 13px; font-weight: 700; margin-bottom: 10px; }
+.track-bar { height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; margin-bottom: 6px; }
+.track-fill { height: 100%; background: var(--red); border-radius: 2px; transition: width 0.6s ease; }
+.track-pct { font-size: 11px; font-family: var(--mono); color: var(--text-muted); }
+
+/* ── CARD DONE ── */
+.card.done { border-color: rgba(0,166,81,0.3); }
+[data-theme="light"] .card.done { background: rgba(0,166,81,0.03); }
+[data-theme="dark"] .card.done { background: rgba(0,166,81,0.06); }
+.badge-done {
+  padding: 2px 8px; border-radius: 5px; font-size: 10px;
+  font-weight: 700; font-family: var(--mono);
+  background: var(--green-dim); color: var(--green);
+}
+.btn-conclude {
+  padding: 5px 11px; border-radius: 7px;
+  border: 1px solid rgba(0,166,81,0.4); background: transparent;
+  color: var(--green); font-size: 11px; font-weight: 700; font-family: var(--font);
+  cursor: pointer; white-space: nowrap; flex-shrink: 0; transition: all 0.2s;
+}
+.btn-conclude:hover { background: var(--green-dim); }
+.btn-conclude.concluded { background: var(--green-dim); border-color: rgba(0,166,81,0.3); }
 </style>
 </head>
 <body data-theme="light">
@@ -464,6 +500,8 @@ input { font-family: var(--font); }
       <h1 class="hero-title">Capacitação em <span>Telecom</span></h1>
       <p class="hero-count" id="heroCount"></p>
     </div>
+
+    <div id="tracksSection" class="tracks-section"></div>
 
     <div class="search-wrap">
       <span class="search-icon">
@@ -543,18 +581,18 @@ const FIREBASE_CONFIG = {
 
 // ─── DATA ───
 const COURSES = [
-  { id:"datacom-gpon", title:"Módulo GPON/OLT — Completo", provider:"Datacom EaD", desc:"65 aulas (~13h) sobre redes GPON. Configuração e operação de OLTs e ONUs Datacom, provisionamento e troubleshooting.", tags:["gpon"], duration:"~13h", format:"EaD", link:"https://ead.datacom.com.br/course/view.php?id=3" },
-  { id:"datacom-dmview", title:"Configuração de OLT via DmView", provider:"Datacom EaD", desc:"21 aulas (~3h) com passo a passo de instalação e ativação de serviços GPON pela interface gráfica DmView.", tags:["gpon"], duration:"~3h", format:"EaD", link:"https://ead.datacom.com.br/enrol/index.php?id=8" },
-  { id:"intelbras-fund", title:"Fundamentos de Redes EPON e GPON", provider:"Intelbras", desc:"Conceitos de óptica, tipos de fibra, protocolos GPON/EPON, arquiteturas FTTx, splitters e cálculos de potência.", tags:["gpon","fibra"], duration:"~6h", format:"EaD", link:"https://cursos.intelbras.com.br/portal/layout/927/intelbras/pg_interna_sistema.asp?aW5jbHVkZT1jYXRhbG9nby9jdXJzb3Nfdmlldy5hc3AmQ3Vyc29JRD00NzIzJmt0X2RpZGF4aXM9dG9w" },
-  { id:"intelbras-6111", title:"Redes Ópticas Passivas — GPON Avançado", provider:"Intelbras", desc:"Curso avançado sobre redes ópticas passivas na plataforma Intelbras Itec. Aprofundamento em GPON, dimensionamento de rede, configuração de OLTs e resolução de problemas em campo.", tags:["gpon","fibra"], duration:"—", format:"EaD", link:"https://cursos.intelbras.com.br/portal/layout/927/intelbras/pg_interna_sistema.asp?aW5jbHVkZT1jYXRhbG9nby9jdXJzb3Nfdmlldy5hc3AmQ3Vyc29JRD02MTExJmt0X2RpZGF4aXM9dG9w" },
-  { id:"elevify-gpon", title:"Treinamento FTTH/GPON", provider:"Elevify + Datacom", desc:"Conceitos de OLT, ONU, splitters, PPPoE e operação de redes GPON. Nível introdutório com carga horária flexível.", tags:["gpon","fibra"], duration:"4–20h", format:"EaD", link:"https://www.elevify.com/pt-br/cursos/negocios-e-economia/telecomunicacao/curso-de-fibras-opticas-ftth-804ce" },
-  { id:"padtec-yt", title:"Padtec Classroom — Série DWDM", provider:"Padtec", desc:"Vídeos técnicos gratuitos: fundamentos DWDM, alternativas de baixo custo e arquiteturas flexíveis. Canal oficial YouTube.", tags:["dwdm"], duration:"~1h cada", format:"Vídeo", link:"https://www.youtube.com/watch?v=DMA9Q07TKKU" },
-  { id:"nicbr-dwdm", title:"Tutorial DWDM — Semana de Capacitação", provider:"NIC.br / Ceptro.br", desc:"Multiplexação por divisão de comprimento de onda, gestão espectral e componentes ópticos em redes de longa distância.", tags:["dwdm"], duration:"~3h", format:"Webinar", link:"https://semanacap.bcp.nic.br/" },
-  { id:"intelbras-fibra", title:"Fibra Óptica", provider:"ead.educatio", desc:"Conceitos e aplicações, Introdução Telecom, leitura de projetos, emendas ópticas e rede externa. Trilha completa.", tags:["fibra"], duration:"~8h", format:"EaD", link:"https://ead.education/course/fibra-optica/" },
-  { id:"nicbr-ipv6", title:"IPv6 Básico — EaD", provider:"NIC.br", desc:"Autoaprendizado do protocolo IPv6 com videoaulas, laboratórios em VM e certificado. Já formou mais de 6.500 alunos.", tags:["ipv6"], duration:"~25h", format:"EaD", link:"https://moodle.saladeaula.nic.br/enrol/index.php?id=55" },
-  { id:"nicbr-bcop", title:"BCOP — Boas Práticas para Sistemas Autônomos", provider:"NIC.br / Ceptro.br", desc:"BGP, RPKI, IPv6, segurança, PTTs e +30 cenários de risco com soluções passo a passo para provedores.", tags:["ipv6","redes"], duration:"~16h", format:"EaD + Presencial", link:"https://cursoseventos.nic.br/curso/curso-bcop/" },
-  { id:"nicbr-mpls", title:"MPLS com Switches DmOS", provider:"NIC.br + Datacom", desc:"Configuração e operação de MPLS tradicional e por engenharia de tráfego em switches Datacom DmOS.", tags:["redes"], duration:"~8h", format:"EaD", link:"https://cursoseventos.nic.br/curso/curso-mpls-datacom-nicbr/" },
-  { id:"huawei-ict", title:"Huawei ICT Academy — Cursos Gratuitos", provider:"Huawei + IFs/MEC", desc:"Cursos online gratuitos em parceria com Institutos Federais: Datacom, Cloud, IA, 5G. Certificação HCIA disponível.", tags:["redes"], duration:"Variável", format:"EaD", link:"https://www.gov.br/mec/pt-br/mecplace/solucoes/parcerias/huawei/ict-academy" },
+  { id:"datacom-gpon",    title:"Módulo GPON/OLT — Completo",              provider:"Datacom EaD",      desc:"65 aulas (~13h) sobre redes GPON. Configuração e operação de OLTs e ONUs Datacom, provisionamento e troubleshooting.",                                                                                           tags:["gpon"],         duration:"~13h",     format:"EaD",            level:"avancado",     vendor:"Datacom",      link:"https://ead.datacom.com.br/course/view.php?id=3" },
+  { id:"datacom-dmview",  title:"Configuração de OLT via DmView",           provider:"Datacom EaD",      desc:"21 aulas (~3h) com passo a passo de instalação e ativação de serviços GPON pela interface gráfica DmView.",                                                                                                      tags:["gpon"],         duration:"~3h",      format:"EaD",            level:"intermediario", vendor:"Datacom",      link:"https://ead.datacom.com.br/enrol/index.php?id=8" },
+  { id:"intelbras-fund",  title:"Fundamentos de Redes EPON e GPON",         provider:"Intelbras",        desc:"Conceitos de óptica, tipos de fibra, protocolos GPON/EPON, arquiteturas FTTx, splitters e cálculos de potência.",                                                                                               tags:["gpon","fibra"],  duration:"~6h",      format:"EaD",            level:"iniciante",    vendor:"Intelbras",    link:"https://cursos.intelbras.com.br/portal/layout/927/intelbras/pg_interna_sistema.asp?aW5jbHVkZT1jYXRhbG9nby9jdXJzb3Nfdmlldy5hc3AmQ3Vyc29JRD00NzIzJmt0X2RpZGF4aXM9dG9w" },
+  { id:"intelbras-6111",  title:"Redes Ópticas Passivas — GPON Avançado",   provider:"Intelbras",        desc:"Curso avançado sobre redes ópticas passivas na plataforma Intelbras Itec. Aprofundamento em GPON, dimensionamento de rede, configuração de OLTs e resolução de problemas em campo.",                              tags:["gpon","fibra"],  duration:"—",        format:"EaD",            level:"avancado",     vendor:"Intelbras",    link:"https://cursos.intelbras.com.br/portal/layout/927/intelbras/pg_interna_sistema.asp?aW5jbHVkZT1jYXRhbG9nby9jdXJzb3Nfdmlldy5hc3AmQ3Vyc29JRD02MTExJmt0X2RpZGF4aXM9dG9w" },
+  { id:"elevify-gpon",    title:"Treinamento FTTH/GPON",                    provider:"Elevify + Datacom", desc:"Conceitos de OLT, ONU, splitters, PPPoE e operação de redes GPON. Nível introdutório com carga horária flexível.",                                                                                              tags:["gpon","fibra"],  duration:"4–20h",    format:"EaD",            level:"iniciante",    vendor:"Elevify",      link:"https://www.elevify.com/pt-br/cursos/negocios-e-economia/telecomunicacao/curso-de-fibras-opticas-ftth-804ce" },
+  { id:"padtec-yt",       title:"Padtec Classroom — Série DWDM",            provider:"Padtec",           desc:"Vídeos técnicos gratuitos: fundamentos DWDM, alternativas de baixo custo e arquiteturas flexíveis. Canal oficial YouTube.",                                                                                       tags:["dwdm"],         duration:"~1h cada", format:"Vídeo",          level:"intermediario", vendor:"Padtec",       link:"https://www.youtube.com/watch?v=DMA9Q07TKKU" },
+  { id:"nicbr-dwdm",      title:"Tutorial DWDM — Semana de Capacitação",    provider:"NIC.br / Ceptro.br",desc:"Multiplexação por divisão de comprimento de onda, gestão espectral e componentes ópticos em redes de longa distância.",                                                                                         tags:["dwdm"],         duration:"~3h",      format:"Webinar",        level:"avancado",     vendor:"NIC.br",       link:"https://semanacap.bcp.nic.br/" },
+  { id:"intelbras-fibra", title:"Fibra Óptica",                              provider:"ead.educatio",     desc:"Conceitos e aplicações, Introdução Telecom, leitura de projetos, emendas ópticas e rede externa. Trilha completa.",                                                                                              tags:["fibra"],        duration:"~8h",      format:"EaD",            level:"iniciante",    vendor:"ead.educatio", link:"https://ead.education/course/fibra-optica/" },
+  { id:"nicbr-ipv6",      title:"IPv6 Básico — EaD",                        provider:"NIC.br",           desc:"Autoaprendizado do protocolo IPv6 com videoaulas, laboratórios em VM e certificado. Já formou mais de 6.500 alunos.",                                                                                             tags:["ipv6"],         duration:"~25h",     format:"EaD",            level:"iniciante",    vendor:"NIC.br",       link:"https://moodle.saladeaula.nic.br/enrol/index.php?id=55" },
+  { id:"nicbr-bcop",      title:"BCOP — Boas Práticas para Sistemas Autônomos", provider:"NIC.br / Ceptro.br",desc:"BGP, RPKI, IPv6, segurança, PTTs e +30 cenários de risco com soluções passo a passo para provedores.",                                                                                                   tags:["ipv6","redes"], duration:"~16h",     format:"EaD + Presencial",level:"avancado",     vendor:"NIC.br",       link:"https://cursoseventos.nic.br/curso/curso-bcop/" },
+  { id:"nicbr-mpls",      title:"MPLS com Switches DmOS",                   provider:"NIC.br + Datacom", desc:"Configuração e operação de MPLS tradicional e por engenharia de tráfego em switches Datacom DmOS.",                                                                                                             tags:["redes"],        duration:"~8h",      format:"EaD",            level:"intermediario", vendor:"NIC.br",       link:"https://cursoseventos.nic.br/curso/curso-mpls-datacom-nicbr/" },
+  { id:"huawei-ict",      title:"Huawei ICT Academy — Cursos Gratuitos",    provider:"Huawei + IFs/MEC", desc:"Cursos online gratuitos em parceria com Institutos Federais: Datacom, Cloud, IA, 5G. Certificação HCIA disponível.",                                                                                            tags:["redes"],        duration:"Variável", format:"EaD",            level:"iniciante",    vendor:"Huawei",       link:"https://www.gov.br/mec/pt-br/mecplace/solucoes/parcerias/huawei/ict-academy" },
 ];
 
 const TAG_META = {
@@ -574,11 +612,25 @@ const FILTERS = [
   { key:"redes", label:"Redes" },
 ];
 
+const TRACKS = [
+  { id:"gpon",    name:"Especialista GPON/OLT",    courses:["datacom-gpon","datacom-dmview","intelbras-6111"] },
+  { id:"dwdm",    name:"Engenharia DWDM",           courses:["padtec-yt","nicbr-dwdm"] },
+  { id:"network", name:"Redes de Operadoras",       courses:["nicbr-bcop","nicbr-mpls","nicbr-ipv6"] },
+];
+
+const LEVEL_META = {
+  iniciante:     { label:"Iniciante",     color:"#00A651" },
+  intermediario: { label:"Intermediário", color:"#F5A623" },
+  avancado:      { label:"Avançado",      color:"#DA291C" },
+};
+
 const ADMIN_KEY = "coprede2026";
 
 // ─── STATE ───
 let currentUser = null;
 let currentFilter = "all";
+let currentLevelFilter = "all";
+let currentVendorFilter = "all";
 let adminAuthed = false;
 let adminTab = "overview";
 
@@ -605,6 +657,54 @@ function saveLogs(l) {
     l.forEach((log, i) => { obj[i] = log; });
     _db.ref("hub/logs").set(obj).catch(console.error);
   }
+}
+
+// ─── PROGRESSO & GAMIFICAÇÃO ───
+function getProgress(email) {
+  try { return JSON.parse(localStorage.getItem("hub:progress:" + email) || "{}"); } catch { return {}; }
+}
+
+function saveProgress(email, progress) {
+  localStorage.setItem("hub:progress:" + email, JSON.stringify(progress));
+  if (_db) _db.ref("hub/progress/" + email.replace(/[.@]/g,"_")).set(progress).catch(console.error);
+}
+
+function getUserPoints(email) {
+  const p = getProgress(email);
+  return Object.values(p).filter(Boolean).length * 10;
+}
+
+function getTrackProgress(track) {
+  if (!currentUser) return { pct: 0, done: 0 };
+  const p = getProgress(currentUser.email);
+  const done = track.courses.filter(id => p[id]).length;
+  return { done, pct: Math.round((done / track.courses.length) * 100) };
+}
+
+function concludeCourse(courseId, event) {
+  event.stopPropagation();
+  if (!currentUser) return;
+  const p = getProgress(currentUser.email);
+  if (p[courseId]) { delete p[courseId]; } else { p[courseId] = true; }
+  saveProgress(currentUser.email, p);
+  renderCatalog();
+}
+
+function renderTracks() {
+  const section = document.getElementById("tracksSection");
+  if (!section || !currentUser) return;
+  section.innerHTML = `
+    <p class="tracks-label">Trilhas de Aprendizado</p>
+    <div class="tracks-grid">
+      ${TRACKS.map(t => {
+        const { done, pct } = getTrackProgress(t);
+        return `<div class="track-card">
+          <div class="track-name">${t.name}</div>
+          <div class="track-bar"><div class="track-fill" style="width:${pct}%"></div></div>
+          <div class="track-pct">${done}/${t.courses.length} cursos &bull; ${pct}%</div>
+        </div>`;
+      }).join("")}
+    </div>`;
 }
 
 function initStorage(callback) {
@@ -742,6 +842,7 @@ function showPage(page) {
 // ─── CATALOG ───
 function renderCatalog() {
   if (!currentUser) return;
+  const progress = getProgress(currentUser.email);
 
   // Greeting
   const firstName = currentUser.name ? currentUser.name.split(" ")[0].toUpperCase() : "";
@@ -751,16 +852,32 @@ function renderCatalog() {
   const isAdmin = currentUser.email === "nelson" || (currentUser.name || "").toLowerCase().includes("nelson");
   document.getElementById("adminBtn").classList.toggle("hidden", !isAdmin);
 
-  // Filters
+  // Tracks
+  renderTracks();
+
+  // Filters — 3 rows: tag | nível | fabricante
+  const vendors = [...new Set(COURSES.map(c => c.vendor).filter(Boolean))].sort();
   const filtersBar = document.getElementById("filtersBar");
-  filtersBar.innerHTML = FILTERS.map(f =>
-    `<button class="filter-btn ${currentFilter === f.key ? 'active' : ''}" onclick="setFilter('${f.key}')">${f.label}</button>`
-  ).join("");
+  filtersBar.style.flexDirection = "column";
+  filtersBar.style.alignItems = "flex-start";
+  filtersBar.style.gap = "8px";
+  filtersBar.innerHTML = `
+    <div style="display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;width:100%">
+      ${FILTERS.map(f => `<button class="filter-btn ${currentFilter===f.key?'active':''}" style="flex-shrink:0" onclick="setFilter('${f.key}')">${f.label}</button>`).join("")}
+    </div>
+    <div style="display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;width:100%">
+      ${[{k:"all",l:"Todos os níveis"},{k:"iniciante",l:"Iniciante"},{k:"intermediario",l:"Intermediário"},{k:"avancado",l:"Avançado"}].map(f =>
+        `<button class="filter-btn ${currentLevelFilter===f.k?'active':''}" style="flex-shrink:0" onclick="setLevelFilter('${f.k}')">${f.l}</button>`).join("")}
+      <span style="width:1px;height:20px;background:var(--border);flex-shrink:0;margin:auto 2px"></span>
+      ${vendors.map(v => `<button class="filter-btn ${currentVendorFilter===v?'active':''}" style="flex-shrink:0" onclick="setVendorFilter('${v}')">${v}</button>`).join("")}
+    </div>`;
 
   // Filter + search
   const search = (document.getElementById("searchInput").value || "").toLowerCase();
   let items = COURSES;
-  if (currentFilter !== "all") items = items.filter(c => c.tags.includes(currentFilter));
+  if (currentFilter !== "all")       items = items.filter(c => c.tags.includes(currentFilter));
+  if (currentLevelFilter !== "all")  items = items.filter(c => c.level === currentLevelFilter);
+  if (currentVendorFilter !== "all") items = items.filter(c => c.vendor === currentVendorFilter);
   if (search) items = items.filter(c =>
     c.title.toLowerCase().includes(search) ||
     c.provider.toLowerCase().includes(search) ||
@@ -778,19 +895,25 @@ function renderCatalog() {
   }
 
   grid.innerHTML = items.map((c, i) => {
+    const done  = !!progress[c.id];
     const accent = TAG_META[c.tags[0]]?.color || "#DA291C";
     const tags = c.tags.map(t => {
       const m = TAG_META[t];
       return `<span class="tag" style="background:${m.color}15;color:${m.color}">${m.label}</span>`;
     }).join("");
+    const lm = c.level ? LEVEL_META[c.level] : null;
+    const levelTag = lm ? `<span class="tag" style="background:${lm.color}15;color:${lm.color}">${lm.label}</span>` : "";
 
     return `
-    <div class="card" onclick="trackAndOpen('${c.id}','${c.link}')" style="animation-delay:${i*40}ms">
-      <div class="card-accent" style="background:${accent}"></div>
+    <div class="card${done?" done":""}" onclick="trackAndOpen('${c.id}','${c.link}')" style="animation-delay:${i*40}ms">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+        <div class="card-accent" style="background:${accent}"></div>
+        ${done ? '<span class="badge-done">&#10004; Concluído</span>' : ""}
+      </div>
       <div class="card-title">${c.title}</div>
       <div class="card-provider">${c.provider}</div>
       <div class="card-desc">${c.desc}</div>
-      <div class="card-tags">${tags}</div>
+      <div class="card-tags">${tags}${levelTag}</div>
       <div class="card-meta">
         <span class="meta-item">
           <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
@@ -802,15 +925,22 @@ function renderCatalog() {
         </span>
         <span class="badge-free">GRATUITO</span>
       </div>
-      <div class="card-link">
-        Acessar curso
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+        <div class="card-link">
+          Acessar curso
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+        </div>
+        <button class="btn-conclude${done?" concluded":""}" onclick="concludeCourse('${c.id}',event)">
+          ${done ? "&#10004; Concluído" : "+ Concluir"}
+        </button>
       </div>
     </div>`;
   }).join("");
 }
 
-function setFilter(f) { currentFilter = f; renderCatalog(); }
+function setFilter(f)       { currentFilter = f;       renderCatalog(); }
+function setLevelFilter(f)  { currentLevelFilter = f;  renderCatalog(); }
+function setVendorFilter(f) { currentVendorFilter = f; renderCatalog(); }
 
 function trackAndOpen(courseId, link) {
   if (!currentUser) return;
@@ -823,12 +953,8 @@ function trackAndOpen(courseId, link) {
 // ─── ADMIN ───
 function checkAdminKey() {
   const val = document.getElementById("adminKeyInput").value;
-  if (val === ADMIN_KEY) {
-    adminAuthed = true;
-    renderAdmin();
-  } else {
-    alert("Chave incorreta");
-  }
+  if (val === ADMIN_KEY) { adminAuthed = true; renderAdmin(); }
+  else { alert("Chave incorreta"); }
 }
 
 function renderAdmin() {
@@ -837,91 +963,104 @@ function renderAdmin() {
   if (!adminAuthed) return;
 
   const users = Object.values(getUsers());
-  const logs = getLogs();
+  const logs  = getLogs();
   const today = new Date().toISOString().slice(0, 10);
   const todayCount = logs.filter(l => l.ts && l.ts.startsWith(today)).length;
 
-  // Stats
+  // KPIs novos
+  const usersWithProgress = users.filter(u => Object.values(getProgress(u.email)).some(Boolean)).length;
+  const allCompleted = users.flatMap(u => Object.entries(getProgress(u.email)).filter(([,v]) => v).map(([k]) => k));
+  const completedSet = new Set(allCompleted);
+  const neverCompleted = COURSES.filter(c => !completedSet.has(c.id)).length;
+  const completionRate = users.length && COURSES.length
+    ? Math.round((allCompleted.length / (users.length * COURSES.length)) * 100)
+    : 0;
+
   document.getElementById("statsGrid").innerHTML = [
-    { label:"Cadastros", value:users.length, color:"var(--red)" },
-    { label:"Acessos", value:logs.length, color:"#0077C8" },
-    { label:"Cursos", value:COURSES.length, color:"#00A651" },
-    { label:"Hoje", value:todayCount, color:"#F5A623" },
+    { label:"Cadastros",       value: users.length,                       color:"var(--red)"  },
+    { label:"Acessos",         value: logs.length,                        color:"#0077C8"     },
+    { label:"Cursos",          value: COURSES.length,                     color:"#00A651"     },
+    { label:"Hoje",            value: todayCount,                         color:"#F5A623"     },
+    { label:"Sem Progresso",   value: users.length - usersWithProgress,   color:"#7B2D8E"     },
+    { label:"Nunca Concluídos",value: neverCompleted,                     color:"#F5A623"     },
+    { label:"Taxa Conclusão",  value: completionRate + "%",               color:"#00A651"     },
   ].map(s => `
     <div class="stat-card">
       <div class="stat-label">${s.label}</div>
       <div class="stat-value" style="color:${s.color}">${s.value}</div>
-    </div>
-  `).join("");
+    </div>`).join("");
 
   // Tabs
   const tabs = [
-    { key:"overview", label:"Cursos mais acessados" },
-    { key:"users", label:"Usuários" },
-    { key:"logs", label:"Log de acessos" },
+    { key:"overview", label:"Ranking de Aprendizado" },
+    { key:"users",    label:"Usuários"               },
+    { key:"logs",     label:"Log de acessos"         },
   ];
   document.getElementById("adminTabs").innerHTML = tabs.map(tb =>
-    `<button class="admin-tab ${adminTab === tb.key ? 'active' : ''}" onclick="setAdminTab('${tb.key}')">${tb.label}</button>`
+    `<button class="admin-tab ${adminTab===tb.key?'active':''}" onclick="setAdminTab('${tb.key}')">${tb.label}</button>`
   ).join("");
 
-  // Content
   const content = document.getElementById("adminContent");
 
   if (adminTab === "overview") {
-    const acc = {};
-    logs.forEach(l => { acc[l.courseId] = (acc[l.courseId] || 0) + 1; });
-    const ranked = Object.entries(acc).sort((a, b) => b[1] - a[1]);
-    if (ranked.length === 0) { content.innerHTML = '<p class="empty-state">Nenhum acesso registrado ainda</p>'; return; }
-    const max = ranked[0][1];
-    content.innerHTML = ranked.map(([id, count], i) => {
-      const c = COURSES.find(x => x.id === id);
-      return `
+    // Ranking por cursos concluídos (aprendizado real)
+    const ranked = users.map(u => {
+      const completed = Object.values(getProgress(u.email)).filter(Boolean).length;
+      return { ...u, completed, points: completed * 10 };
+    }).sort((a, b) => b.completed - a.completed);
+
+    if (ranked.length === 0) { content.innerHTML = '<p class="empty-state">Nenhum usuário cadastrado</p>'; return; }
+    const max = ranked[0].completed || 1;
+    content.innerHTML = ranked.map((u, i) => `
       <div class="rank-item">
-        <div class="rank-bar" style="width:${(count/max)*100}%"></div>
+        <div class="rank-bar" style="width:${(u.completed/max)*100}%"></div>
         <span class="rank-num">${i+1}</span>
         <div class="rank-info">
-          <div class="rank-title">${c ? c.title : id}</div>
-          <div class="rank-sub">${c ? c.provider : ''}</div>
+          <div class="rank-title">${u.name}</div>
+          <div class="rank-sub">${u.completed} curso${u.completed!==1?"s":""} concluído${u.completed!==1?"s":""} · ${u.points} pontos</div>
         </div>
-        <span class="rank-count">${count}</span>
-      </div>`;
-    }).join("");
+        <span class="rank-count">${u.points}pts</span>
+      </div>`).join("");
   }
 
   else if (adminTab === "users") {
     if (users.length === 0) { content.innerHTML = '<p class="empty-state">Nenhum usuário cadastrado</p>'; return; }
     const uacc = {};
     logs.forEach(l => { uacc[l.email] = (uacc[l.email] || 0) + 1; });
-    content.innerHTML = users.map(u => `
+    content.innerHTML = users.map(u => {
+      const completed = Object.values(getProgress(u.email)).filter(Boolean).length;
+      const points    = getUserPoints(u.email);
+      return `
       <div class="user-item">
         <div class="user-top">
           <div>
             <div class="user-name">${u.name}</div>
             <div class="user-email">${u.email}</div>
           </div>
-          <span class="user-badge">${uacc[u.email] || 0} acessos</span>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+            <span class="user-badge">${uacc[u.email]||0} acessos</span>
+            <span style="font-size:10px;font-family:var(--mono);color:var(--green);font-weight:700">${completed} concluídos · ${points}pts</span>
+          </div>
         </div>
-        ${u.sector || u.role ? `<div class="user-detail">${[u.sector, u.role].filter(Boolean).join(' · ')}</div>` : ''}
-        <div class="user-date">Cadastro: ${u.registeredAt ? new Date(u.registeredAt).toLocaleDateString('pt-BR') : '—'}</div>
-      </div>
-    `).join("");
+        ${u.sector||u.role?`<div class="user-detail">${[u.sector,u.role].filter(Boolean).join(" · ")}</div>`:""}
+        <div class="user-date">Cadastro: ${u.registeredAt?new Date(u.registeredAt).toLocaleDateString("pt-BR"):"—"}</div>
+      </div>`;
+    }).join("");
   }
 
   else if (adminTab === "logs") {
-    let html = '';
-    if (logs.length > 0) {
-      html += '<div style="display:flex;justify-content:flex-end;margin-bottom:12px"><button class="btn-outline" onclick="clearLogs()">Limpar logs</button></div>';
-    }
+    let html = "";
+    if (logs.length > 0) html += '<div style="display:flex;justify-content:flex-end;margin-bottom:12px"><button class="btn-outline" onclick="clearLogs()">Limpar logs</button></div>';
     if (logs.length === 0) { content.innerHTML = '<p class="empty-state">Nenhum log registrado</p>'; return; }
     html += [...logs].reverse().slice(0, 100).map(l => {
       const c = COURSES.find(x => x.id === l.courseId);
-      const time = l.ts ? new Date(l.ts).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' }) : '—';
+      const time = l.ts ? new Date(l.ts).toLocaleString("pt-BR", { day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit" }) : "—";
       return `
       <div class="log-item">
         <span class="log-time">${time}</span>
-        <span class="log-user">${l.name || l.email}</span>
+        <span class="log-user">${l.name||l.email}</span>
         <span class="log-arrow">→</span>
-        <span class="log-course">${c ? c.title : l.courseId}</span>
+        <span class="log-course">${c?c.title:l.courseId}</span>
       </div>`;
     }).join("");
     content.innerHTML = html;
