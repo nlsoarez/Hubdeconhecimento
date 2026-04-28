@@ -6,6 +6,8 @@
 <title>Hub de Conhecimento — Telecom</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <style>
 :root {
   --red: #DA291C;
@@ -374,9 +376,29 @@ input { font-family: var(--font); }
   from { opacity: 0; transform: translateY(12px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+/* ── LOADING OVERLAY ── */
+.loading-overlay {
+  position: fixed; inset: 0; z-index: 200;
+  background: var(--bg);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+}
+.loading-spinner {
+  width: 36px; height: 36px; border-radius: 50%;
+  border: 3px solid var(--border); border-top-color: var(--red);
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
 </style>
 </head>
 <body data-theme="light">
+
+<!-- ============ LOADING OVERLAY ============ -->
+<div id="loadingOverlay" class="loading-overlay">
+  <div class="login-logo-icon" style="width:48px;height:48px;border-radius:12px;background:linear-gradient(135deg,var(--red),#B71C1C);display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:20px;font-weight:800;font-family:var(--mono)">H</div>
+  <div class="loading-spinner"></div>
+  <p style="color:var(--text-muted);font-size:12px;font-family:var(--mono)">Carregando...</p>
+</div>
 
 <!-- ============ LOGIN PAGE ============ -->
 <div id="loginPage" class="login-page">
@@ -502,11 +524,32 @@ input { font-family: var(--font); }
 </div>
 
 <script>
+// ─── FIREBASE CONFIGURAÇÃO ───
+// Para sincronizar cadastros entre dispositivos:
+// 1. Acesse https://console.firebase.google.com e crie um projeto gratuito
+// 2. Ative "Realtime Database" → escolha região → iniciar em modo teste
+// 3. Vá em ⚙ Configurações → Seus apps → Adicionar app Web → copie os valores
+// 4. Substitua null pelo objeto de configuração abaixo
+
+const FIREBASE_CONFIG = null;
+/*
+const FIREBASE_CONFIG = {
+  apiKey: "COLE_AQUI",
+  authDomain: "seu-projeto.firebaseapp.com",
+  databaseURL: "https://seu-projeto-default-rtdb.firebaseio.com",
+  projectId: "seu-projeto",
+  storageBucket: "seu-projeto.firebasestorage.app",
+  messagingSenderId: "SEU_SENDER_ID",
+  appId: "SEU_APP_ID"
+};
+*/
+
 // ─── DATA ───
 const COURSES = [
   { id:"datacom-gpon", title:"Módulo GPON/OLT — Completo", provider:"Datacom EaD", desc:"65 aulas (~13h) sobre redes GPON. Configuração e operação de OLTs e ONUs Datacom, provisionamento e troubleshooting.", tags:["gpon"], duration:"~13h", format:"EaD", link:"https://ead.datacom.com.br/course/view.php?id=3" },
   { id:"datacom-dmview", title:"Configuração de OLT via DmView", provider:"Datacom EaD", desc:"21 aulas (~3h) com passo a passo de instalação e ativação de serviços GPON pela interface gráfica DmView.", tags:["gpon"], duration:"~3h", format:"EaD", link:"https://ead.datacom.com.br/enrol/index.php?id=8" },
   { id:"intelbras-fund", title:"Fundamentos de Redes EPON e GPON", provider:"Intelbras", desc:"Conceitos de óptica, tipos de fibra, protocolos GPON/EPON, arquiteturas FTTx, splitters e cálculos de potência.", tags:["gpon","fibra"], duration:"~6h", format:"EaD", link:"https://cursos.intelbras.com.br/portal/layout/927/intelbras/pg_interna_sistema.asp?aW5jbHVkZT1jYXRhbG9nby9jdXJzb3Nfdmlldy5hc3AmQ3Vyc29JRD00NzIzJmt0X2RpZGF4aXM9dG9w" },
+  { id:"intelbras-6111", title:"Redes Ópticas Passivas — GPON Avançado", provider:"Intelbras", desc:"Curso avançado sobre redes ópticas passivas na plataforma Intelbras Itec. Aprofundamento em GPON, dimensionamento de rede, configuração de OLTs e resolução de problemas em campo.", tags:["gpon","fibra"], duration:"—", format:"EaD", link:"https://cursos.intelbras.com.br/portal/layout/927/intelbras/pg_interna_sistema.asp?aW5jbHVkZT1jYXRhbG9nby9jdXJzb3Nfdmlldy5hc3AmQ3Vyc29JRD02MTExJmt0X2RpZGF4aXM9dG9w" },
   { id:"elevify-gpon", title:"Treinamento FTTH/GPON", provider:"Elevify + Datacom", desc:"Conceitos de OLT, ONU, splitters, PPPoE e operação de redes GPON. Nível introdutório com carga horária flexível.", tags:["gpon","fibra"], duration:"4–20h", format:"EaD", link:"https://www.elevify.com/pt-br/cursos/negocios-e-economia/telecomunicacao/curso-de-fibras-opticas-ftth-804ce" },
   { id:"padtec-yt", title:"Padtec Classroom — Série DWDM", provider:"Padtec", desc:"Vídeos técnicos gratuitos: fundamentos DWDM, alternativas de baixo custo e arquiteturas flexíveis. Canal oficial YouTube.", tags:["dwdm"], duration:"~1h cada", format:"Vídeo", link:"https://www.youtube.com/watch?v=DMA9Q07TKKU" },
   { id:"nicbr-dwdm", title:"Tutorial DWDM — Semana de Capacitação", provider:"NIC.br / Ceptro.br", desc:"Multiplexação por divisão de comprimento de onda, gestão espectral e componentes ópticos em redes de longa distância.", tags:["dwdm"], duration:"~3h", format:"Webinar", link:"https://semanacap.bcp.nic.br/" },
@@ -542,10 +585,89 @@ let currentFilter = "all";
 let adminAuthed = false;
 let adminTab = "overview";
 
-function getUsers() { try { return JSON.parse(localStorage.getItem("hub:users") || "{}"); } catch { return {}; } }
-function saveUsers(u) { localStorage.setItem("hub:users", JSON.stringify(u)); }
-function getLogs() { try { return JSON.parse(localStorage.getItem("hub:logs") || "[]"); } catch { return []; } }
-function saveLogs(l) { localStorage.setItem("hub:logs", JSON.stringify(l)); }
+// Armazenamento em memória (sincronizado com Firebase ou localStorage)
+let _db = null;
+let _users = {};
+let _logs = [];
+
+function getUsers() { return _users; }
+
+function saveUsers(u) {
+  _users = u;
+  localStorage.setItem("hub:users", JSON.stringify(u));
+  if (_db) _db.ref("hub/users").set(u).catch(console.error);
+}
+
+function getLogs() { return _logs; }
+
+function saveLogs(l) {
+  _logs = l;
+  localStorage.setItem("hub:logs", JSON.stringify(l));
+  if (_db) {
+    const obj = {};
+    l.forEach((log, i) => { obj[i] = log; });
+    _db.ref("hub/logs").set(obj).catch(console.error);
+  }
+}
+
+function initStorage(callback) {
+  if (!FIREBASE_CONFIG) {
+    _users = JSON.parse(localStorage.getItem("hub:users") || "{}");
+    _logs = JSON.parse(localStorage.getItem("hub:logs") || "[]");
+    callback();
+    return;
+  }
+
+  try {
+    firebase.initializeApp(FIREBASE_CONFIG);
+    _db = firebase.database();
+
+    let usersReady = false, logsReady = false;
+    const check = () => { if (usersReady && logsReady) callback(); };
+
+    _db.ref("hub/users").on("value", snap => {
+      const remote = snap.val() || {};
+      // Migra dados locais para o Firebase na primeira sincronização (se Firebase vazio)
+      if (Object.keys(remote).length === 0) {
+        const local = JSON.parse(localStorage.getItem("hub:users") || "{}");
+        if (Object.keys(local).length > 0) {
+          _users = local;
+          _db.ref("hub/users").set(local).catch(console.error);
+        } else {
+          _users = {};
+        }
+      } else {
+        _users = remote;
+      }
+      if (!usersReady) { usersReady = true; check(); }
+    });
+
+    _db.ref("hub/logs").on("value", snap => {
+      const data = snap.val() || {};
+      const remote = Array.isArray(data) ? data : Object.values(data);
+      // Migra logs locais na primeira sincronização (se Firebase vazio)
+      if (remote.length === 0) {
+        const local = JSON.parse(localStorage.getItem("hub:logs") || "[]");
+        if (local.length > 0) {
+          _logs = local;
+          const obj = {};
+          local.forEach((log, i) => { obj[i] = log; });
+          _db.ref("hub/logs").set(obj).catch(console.error);
+        } else {
+          _logs = [];
+        }
+      } else {
+        _logs = remote;
+      }
+      if (!logsReady) { logsReady = true; check(); }
+    });
+  } catch (e) {
+    console.error("Firebase erro:", e);
+    _users = JSON.parse(localStorage.getItem("hub:users") || "{}");
+    _logs = JSON.parse(localStorage.getItem("hub:logs") || "[]");
+    callback();
+  }
+}
 
 // ─── THEME ───
 function toggleTheme() {
@@ -819,15 +941,17 @@ function clearLogs() {
 }
 
 // ─── INIT ───
-(function init() {
-  const session = localStorage.getItem("hub:session");
-  const users = getUsers();
-  if (session && users[session]) {
-    currentUser = users[session];
-    showPage("catalog");
-  } else {
-    showPage("login");
-  }
+(function start() {
+  initStorage(function () {
+    document.getElementById("loadingOverlay").style.display = "none";
+    const session = localStorage.getItem("hub:session");
+    if (session && _users[session]) {
+      currentUser = _users[session];
+      showPage("catalog");
+    } else {
+      showPage("login");
+    }
+  });
 })();
 </script>
 </body>
