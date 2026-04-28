@@ -707,36 +707,17 @@ function renderTracks() {
 }
 
 function initStorage(callback) {
-  let called = false;
-  function done() {
-    if (called) return;
-    called = true;
-    callback();
-  }
+  // Carrega localStorage imediatamente para UI aparecer sem atraso
+  _users = JSON.parse(localStorage.getItem("hub:users") || "{}");
+  _logs  = JSON.parse(localStorage.getItem("hub:logs")  || "[]");
+  callback();
 
-  function fallback(reason) {
-    console.warn("Firebase fallback:", reason);
-    _db = null;
-    _users = JSON.parse(localStorage.getItem("hub:users") || "{}");
-    _logs  = JSON.parse(localStorage.getItem("hub:logs")  || "[]");
-    done();
-  }
+  if (!FIREBASE_CONFIG) return;
 
-  if (!FIREBASE_CONFIG) { fallback("sem configuração"); return; }
-
-  // Timeout de segurança: se Firebase não responder em 6s, usa localStorage
-  const timeout = setTimeout(() => fallback("timeout"), 6000);
-
+  // Sincroniza Firebase em segundo plano
   try {
     firebase.initializeApp(FIREBASE_CONFIG);
     _db = firebase.database();
-
-    let usersReady = false, logsReady = false;
-    function check() {
-      if (!usersReady || !logsReady) return;
-      clearTimeout(timeout);
-      done();
-    }
 
     _db.ref("hub/users").on("value",
       snap => {
@@ -748,9 +729,11 @@ function initStorage(callback) {
             _db.ref("hub/users").set(local).catch(console.error);
           } else { _users = {}; }
         } else { _users = remote; }
-        if (!usersReady) { usersReady = true; check(); }
+        const session = localStorage.getItem("hub:session");
+        if (session && _users[session]) currentUser = _users[session];
+        if (currentUser) renderCatalog();
       },
-      err => { console.error("Firebase users:", err); fallback(err.message); }
+      err => console.error("Firebase users:", err)
     );
 
     _db.ref("hub/logs").on("value",
@@ -766,12 +749,11 @@ function initStorage(callback) {
             _db.ref("hub/logs").set(obj).catch(console.error);
           } else { _logs = []; }
         } else { _logs = remote; }
-        if (!logsReady) { logsReady = true; check(); }
       },
-      err => { console.error("Firebase logs:", err); fallback(err.message); }
+      err => console.error("Firebase logs:", err)
     );
   } catch (e) {
-    fallback(e.message);
+    console.warn("Firebase init error:", e.message);
   }
 }
 
@@ -878,6 +860,7 @@ function renderCatalog() {
       ${[{k:"all",l:"Todos os níveis"},{k:"iniciante",l:"Iniciante"},{k:"intermediario",l:"Intermediário"},{k:"avancado",l:"Avançado"}].map(f =>
         `<button class="filter-btn ${currentLevelFilter===f.k?'active':''}" style="flex-shrink:0" onclick="setLevelFilter('${f.k}')">${f.l}</button>`).join("")}
       <span style="width:1px;height:20px;background:var(--border);flex-shrink:0;margin:auto 2px"></span>
+      <button class="filter-btn ${currentVendorFilter==='all'?'active':''}" style="flex-shrink:0" onclick="setVendorFilter('all')">Todos</button>
       ${vendors.map(v => `<button class="filter-btn ${currentVendorFilter===v?'active':''}" style="flex-shrink:0" onclick="setVendorFilter('${v}')">${v}</button>`).join("")}
     </div>`;
 
