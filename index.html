@@ -636,10 +636,17 @@ let _logs = [];
 
 function getUsers() { return _users; }
 
+// Firebase não aceita . # $ [ ] / em chaves — sanitiza o e-mail para usar como key
+function emailKey(e) { return e.replace(/[.#$\[\]\/]/g, "_"); }
+
 function saveUsers(u) {
   _users = u;
   localStorage.setItem("hub:users", JSON.stringify(u));
-  if (_db) _db.ref("hub/users").set(u).catch(console.error);
+  if (_db) {
+    const obj = {};
+    Object.values(u).forEach(usr => { if (usr && usr.email) obj[emailKey(usr.email)] = usr; });
+    _db.ref("hub/users").set(obj).catch(console.error);
+  }
 }
 
 function getLogs() { return _logs; }
@@ -774,9 +781,15 @@ function initStorage(callback) {
           const local = JSON.parse(localStorage.getItem("hub:users") || "{}");
           if (Object.keys(local).length > 0) {
             _users = local;
-            _db.ref("hub/users").set(local).catch(console.error);
+            const obj = {};
+            Object.values(local).forEach(usr => { if (usr && usr.email) obj[emailKey(usr.email)] = usr; });
+            _db.ref("hub/users").set(obj).catch(console.error);
           } else { _users = {}; }
-        } else { _users = remote; }
+        } else {
+          const map = {};
+          Object.values(remote).forEach(usr => { if (usr && usr.email) map[usr.email] = usr; });
+          _users = map;
+        }
         const session = localStorage.getItem("hub:session");
         if (session && _users[session]) currentUser = _users[session];
         if (currentUser) renderCatalog();
